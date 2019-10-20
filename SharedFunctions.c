@@ -54,3 +54,46 @@ int SharedRead(void* memory){ //legge il contenuto della shm
   return i;
 }
 
+topic* createTopic (char* name, int* size, int flag, void* mem){ //crea un topic contestualmente alla shared memory preallocata
+  topicList* topics = listTopic(mem);
+  int fd;
+  if (flag == 0){
+    fd = shm_open(name, O_RDWR|O_CREAT, 0666);
+  }
+  else{
+    fd = shm_open(name, O_RDWR, 0666);
+  }
+  if(fd < 0){
+    printf("Cannot create shm\n");
+    exit(-1);
+  }
+  int res = ftruncate(fd, size);
+  if(res < 0){
+    printf("Cannot truncate shm\n");
+    exit(-1);
+  }
+  void* memory;
+  if (flag == 0){
+    memory = mmap(mem+sizeof(topics), size, PROT_WRITE, MAP_SHARED, fd, 0);
+  }
+  else{
+    memory = mmap(mem+sizeof(topics), size, PROT_READ, MAP_SHARED, fd, 0);
+  }
+  topic* newtopic = (topic*) malloc (sizeof (topic));
+  newtopic->name = name;
+  newtopic->size = size;
+  newtopic->msglength = 0;
+  newtopic->memory = memory;
+  return newtopic;
+}
+
+
+void* deleteTopic (char* name, void* mem){ //distrugge un topic in mem
+
+
+}
+
+topicList* listTopic (void* mem){ //stampa una lista di tutti i topic momentaneamente esistenti in mem
+
+
+}
