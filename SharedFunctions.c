@@ -54,7 +54,7 @@ int SharedRead(void* memory){ //legge il contenuto della shm
   return i;
 }
 
-topic* createTopic (char* name, int* size, int flag, void* mem){ //crea un topic contestualmente alla shared memory preallocata
+topic* createTopic (char* name, int size, int flag, void* mem){ //crea un topic contestualmente alla shared memory preallocata
   topicList* topics = listTopic(mem);
   int fd;
   if (flag == 0){
@@ -88,12 +88,11 @@ topic* createTopic (char* name, int* size, int flag, void* mem){ //crea un topic
 }
 
 
-void* deleteTopic (char* name, void* mem){ //distrugge un topic in mem
-
-
+void deleteTopic (char* name){ //distrugge un topic
+  shm_unlink(name);
+  return;
 }
 
 topicList* listTopic (void* mem){ //stampa una lista di tutti i topic momentaneamente esistenti in mem
-
 
 }
