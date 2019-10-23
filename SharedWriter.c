@@ -6,10 +6,6 @@
 #define SEM_NAME2 "/counter"
 #define CHANNEL  "disney"
 
-
-//situazione corrente: il ciclo è circa completato, entro nel topic, bisogna sistemare cosa succede con exit e risolvere
-//il problema che dà la sem_getvalue(blocca writer e dà errori sul reader)
-
 void my_handler(int signum){
   int res;
   if(signum == SIGINT){
@@ -53,7 +49,7 @@ void my_handler(int signum){
 
 int main(int argc, char** argv){
   printf("Hi! I am the Evil Writer!\n Those silly readers will make sure to read whatever I tell them, even closing when I say quit! MWAHAH, SO EVIL!\n");
-  //beginning initialization
+
   struct sigaction sa;
   sa.sa_handler = my_handler;
   if(sigaction(SIGINT, &sa, NULL)<0){
@@ -63,8 +59,8 @@ int main(int argc, char** argv){
   int res;
   char*name= CHANNEL;
   void* mem= SharedCreate(name,SIZE,0);
-  char* text= (char*) malloc (sizeof(char)*60);
   char* topicname= (char*) malloc (sizeof(char)*60);
+  char* text= (char*) malloc (sizeof(char)*60);
   sem_t* sem = sem_open(SEM_NAME1, O_CREAT, 0666, 0);
   if(sem == SEM_FAILED){
     printf("Error in sem_open: %d\n", errno);
@@ -76,9 +72,9 @@ int main(int argc, char** argv){
     exit(-1);
   }
   int i = 0;
-  //initialization is over, onto the topic setting
 
   while(1){
+    //lettura messaggio
     while(i< 60){
       res = read(0, topicname + i, 1);
       if(res == 1){
@@ -89,112 +85,113 @@ int main(int argc, char** argv){
         exit(-1);
       }
     }
-    //topic name received, let's create it
-    if(strcmp(topicname,"quit\n")){
-      void* topic = createTopic(topicname, SIZE_TOPIC, 0, mem);
-      printf("Hello, you are now inside topic %s \n", topicname);
-      //topic created, now let's read our cute messages
-      while(1){
-        while(i< 60){
-          res = read(0, text + i, 1);
-          if(res == 1){
-            if (text[i] == '\n') break;
-            i++;
-          }
-          else{
-            exit(-1);
-          }
+    //se la stringa è quit, faccio una sharedWrite a vuoto ed esco dal while(1)
+    if(!strcmp(topicname,"quit\n")){
+      int*num = (int*)malloc(sizeof(int));
+      res = sem_getvalue(counter, num);
+      if(res < 0){
+        printf("Error in getvalue: %d\n", errno);
+        exit(-1);
+      }
+      int z;
+
+      for(z = 0; z < *num; z++){
+        res = sem_post(sem);
+        if(res < 0){
+          printf("Error in post number: %d\n", z+1);
+          exit(-1);
         }
-        //message received! let's send it
-        if(strcmp(text,"quit\n") && strcmp(text,"exit\n")){
-          int*num = (int*)malloc(sizeof(int));
-          res = sem_getvalue(counter, num);
-          if(res < 0){
-            printf("Error in getvalue: %d\n", errno);
-            exit(-1);
-          }
-          int z;
+      }
+      int no_use=SharedWrite(topicname,mem);
+      break;
+    }
 
-          for(z = 0; z < *num; z++){
-            res = sem_post(sem);
-            if(res < 0){
-              printf("Error in post number: %d\n", z+1);
-              exit(-1);
-            }
-          }
-          int no_use=SharedWrite(text,topic);
-          break;
+    //se sono qui la stringa non è quit, quindi creo il topic
+    void* topic = SharedCreate(topicname, SIZE_TOPIC, 0);
+    printf("Hello, you are now inside topic %s \n", topicname);
+    i = 0;
+    //a questo punto entro nel while per la scrittura nel topic
+    while(1){
+      //leggo il messaggio
+      while(i< 60){
+        res = read(0, text + i, 1);
+        if(res == 1){
+          if (text[i] == '\n') break;
+          i++;
         }
-        //message sent, let's release the readers
-
-        int*number = (int*)malloc(sizeof(int));
-
-        res = sem_getvalue(counter, number);
-
+        else{
+          exit(-1);
+        }
+      }
+      //se il messaggio è quit, esco dal while (1), devo ancora vedere cosa succede fuori dal ciclo
+      if(!strcmp(text,"quit\n")){
+        int*num = (int*)malloc(sizeof(int));
+        res = sem_getvalue(counter, num);
         if(res < 0){
           printf("Error in getvalue: %d\n", errno);
           exit(-1);
         }
         int z;
-        printf("reader number:%d\n", *number);
-        for(z = 0; z < *number; z++){
+        for(z = 0; z < *num; z++){
           res = sem_post(sem);
-
           if(res < 0){
-            printf("Error in post number: %d\n", i+1);
+            printf("Error in post number: %d\n", z+1);
             exit(-1);
           }
         }
 
-        int offset=SharedWrite(text,topic);
-
-        mem+=offset;
-        i=0;
-        z=0;
-        free(text);
-        text= (char*) malloc (sizeof(char)*60);
+        int no_use=SharedWrite(text,topic);
+        break;
       }
-      //quit message received inside topic
-      free(text);
-      while(1){
-        int*value = (int*)malloc(sizeof(int));
-        res = sem_getvalue(counter, value);
+
+      //da aggiungere if exit
+      if (!strcmp(text, "exit\n")){
+        printf("Sto uscendo dal topic %s", topicname);
+        break;
+      }
+      //ho letto il messaggio, lo scrivo nel topic
+      int*number = (int*)malloc(sizeof(int));
+
+      res = sem_getvalue(counter, number);
+
+      if(res < 0){
+        printf("Error in getvalue: %d\n", errno);
+        exit(-1);
+      }
+      int z;
+      printf("reader number:%d\n", *number);
+
+      for(z = 0; z < *number; z++){
+        res = sem_post(sem);
         if(res < 0){
-          printf("Error in getvalue: %d\n", errno);
+          printf("Error in post number: %d\n", i+1);
           exit(-1);
         }
-        if(*value == 0) break;
-        sleep(1);
       }
-      res = sem_close(counter);
-      if (res < 0){
-        printf("Error sem_close on counter\n" );
-        exit(-1);
-      }
-      res = sem_unlink(SEM_NAME2);
-      if (res < 0){
-        printf("Error sem_unlink on counter\n" );
-        exit(-1);
-      }
-      res = sem_close(sem);
-      if (res < 0){
-        printf("Error in sem_close on sem\n" );
-        exit(-1);
-      }
-      res = sem_unlink(SEM_NAME1);
-      if (res < 0){
-        printf("Error sem_unlink on sem\n" );
-        exit(-1);
-      }
-      deleteTopic(topicname);
-      shm_unlink(name);
-      return 0;
-    }
-  }
-  //outside of topic, must iterate
 
-  //quit message received outside topic
+      int offset=SharedWrite(text,topic);
+
+      topic+=offset;
+      i=0;
+      z=0;
+      free(text);
+      text= (char*) malloc (sizeof(char)*60);
+    }
+
+    shm_unlink(topicname);
+    //se il testo ricevuto era quit
+    if (!strcmp(text, "quit\n")){
+      free(text);
+      break;
+    }
+    //altrimenti posso cambiare topic per cominciare a scrivere in quello
+    free(topicname);
+    free(text);
+    topicname = (char*) malloc (sizeof(char)*60);
+    text = (char*) malloc (sizeof(char)*60);
+  }
   free(topicname);
+
   while(1){
     int*value = (int*)malloc(sizeof(int));
     res = sem_getvalue(counter, value);

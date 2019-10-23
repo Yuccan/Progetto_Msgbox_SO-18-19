@@ -54,8 +54,30 @@ int SharedRead(void* memory){ //legge il contenuto della shm
   return i;
 }
 
-topic* createTopic (char* name, int size, int flag, void* mem){ //crea un topic contestualmente alla shared memory preallocata
-  topicList* topics = listTopic(mem);
+int topicNum (topicList* topics){//calcola il numero di topics creati
+  int i = 0;
+  topicListItem* item = topics->head;
+  while(item->next){
+    i++;
+    item=item->next;
+  }
+  return i;
+}
+
+void listTopic (topicList* topics){ //stampa una lista di tutti i topic momentaneamente esistenti in mem
+  topicListItem* item = topics->head;
+  topic* currentTopic;
+  printf("----PRINTING TOPICS INFO----");
+  while(item->next){
+    currentTopic = item->item;
+    printf("Topic name: %s, Topic size: %n KB, Topic occupied space: %n KB\n",currentTopic->name, &currentTopic->size, &currentTopic->msglength);
+    item=item->next;
+  }
+  return;
+}
+
+topic* createTopic (char* name, int size, int flag, void* mem, topicList* topics){ //crea un topic contestualmente alla shared memory preallocata
+  int n_topics=topicNum(topics);
   int fd;
   if (flag == 0){
     fd = shm_open(name, O_RDWR|O_CREAT, 0666);
@@ -74,25 +96,25 @@ topic* createTopic (char* name, int size, int flag, void* mem){ //crea un topic 
   }
   void* memory;
   if (flag == 0){
-    memory = mmap(mem+sizeof(topics), size, PROT_WRITE, MAP_SHARED, fd, 0);
+    memory = mmap(mem+sizeof(topicListItem)*n_topics, size, PROT_WRITE, MAP_SHARED, fd, 0);
   }
   else{
-    memory = mmap(mem+sizeof(topics), size, PROT_READ, MAP_SHARED, fd, 0);
+    memory = mmap(mem+sizeof(topicListItem)*n_topics, size, PROT_READ, MAP_SHARED, fd, 0);
   }
   topic* newtopic = (topic*) malloc (sizeof (topic));
   newtopic->name = name;
   newtopic->size = size;
   newtopic->msglength = 0;
   newtopic->memory = memory;
+  topicListItem* newtopicitem;
+  newtopicitem->item=newtopic;
+  newtopicitem->next=NULL;
+  newtopicitem->prec=topics->last;
+  topics->last=newtopicitem;
   return newtopic;
 }
 
 
-void deleteTopic (char* name){ //distrugge un topic
-  shm_unlink(name);
+void deleteTopic (char* name){ //distrugge un topic,TODO
   return;
-}
-
-topicList* listTopic (void* mem){ //stampa una lista di tutti i topic momentaneamente esistenti in mem
-
 }

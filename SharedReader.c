@@ -1,5 +1,5 @@
 #include "SharedFunctions.h"
-#define SIZE 1024
+#define SIZE 128
 #define SEM_NAME1 "/semaphore"
 #define SEM_NAME2 "/counter"
 #define CHANNEL "disney"
@@ -63,33 +63,33 @@ int main(int argc, char** argv){
   }
   while(1){
 
-  res = sem_wait(sem);
+    res = sem_wait(sem);
 
-
+    if(res < 0){
+      printf("Error in sem_wait on sem");
+      exit(-1);
+    }
+    int offset=SharedRead(mem);
+    printf ("ho letto\n");
+    if(offset==-1) break;
+    mem+=offset;
+    sleep(1);
+  }
+  res = sem_wait(counter);
   if(res < 0){
-    printf("Error in sem_wait on sem");
+    printf("Error in sem_wait on counter");
     exit(-1);
   }
-  int offset=SharedRead(mem);
-  if(offset==-1) break;
-  mem+=offset;
-  sleep(1);
-}
-res = sem_wait(counter);
-if(res < 0){
-  printf("Error in sem_wait on counter");
-  exit(-1);
-}
-res = sem_close(counter);
-if (res < 0){
-  printf("Error in sem_close on counter\n" );
-  exit(-1);
-}
-res = sem_close(sem);
-if (res < 0){
-  printf("Error in sem_close on sem\n" );
-  exit(-1);
-}
+  res = sem_close(counter);
+  if (res < 0){
+    printf("Error in sem_close on counter\n" );
+    exit(-1);
+  }
+  res = sem_close(sem);
+  if (res < 0){
+    printf("Error in sem_close on sem\n" );
+    exit(-1);
+  }
 
-return 0;
+  return 0;
 }

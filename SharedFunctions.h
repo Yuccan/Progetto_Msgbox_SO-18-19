@@ -19,14 +19,22 @@ typedef struct topic {
   void* memory;
 } topic;
 
+typedef struct topicListItem {
+  topic* item;
+  struct topicListItem* prec;
+  struct topicListItem* next;
+}topicListItem;
+
 typedef struct topicList {
-  topic* topics;
+  topicListItem* head;
+  topicListItem* last;
 }topicList;
 
 
 void* SharedCreate(char* name, int size, int flag); //crea la shm e la mmappa per tutti i processi che ne hanno bisogno, viene chiamata UNA volta AF MG FF
 int SharedWrite(char* text, void* memory); //scrive nella shm il messaggio, restituendo la lunghezza dello stesso, in modo che possa essere aggiunta al puntatore nel processo AF MG FF
 int SharedRead(void* memory); //legge il contenuto della shm AF MG FF
-topic* createTopic (char* name, int size, int flag, void* mem); //crea un topic contestualmente alla shared memory mem
+int topicNum (topicList* topics); //calcola il numero di topics creati
+void listTopic (topicList* topics); //stampa una lista di tutti i topic momentaneamente esistenti in mem
+topic* createTopic (char* name, int size, int flag, void* mem, topicList* topics); //crea un topic contestualmente alla shared memory mem
 void deleteTopic (char* name); //distrugge un topic
-topicList* listTopic (void* mem); //stampa una lista di tutti i topic momentaneamente esistenti in mem
