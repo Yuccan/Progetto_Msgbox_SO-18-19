@@ -106,8 +106,20 @@ int main(int argc, char** argv){
       break;
     }
 
+    strcpy(topicname,strtok(topicname,"\n"));
     //se sono qui la stringa non è quit, quindi creo il topic
-    void* topic = SharedCreate(topicname, SIZE_TOPIC, 0);
+    int fd;
+    fd = shm_open(topicname, O_CREAT|O_RDWR, 0666);
+    if(fd < 0){
+      printf("Cannot create shm, %s\n", strerror(errno));
+      exit(-1);
+    }
+    int res = ftruncate(fd, SIZE_TOPIC);
+    if(res < 0){
+      printf("Cannot truncate shm, %s\n", strerror(errno));
+      exit(-1);
+    }
+    void* topic = mmap(mem+SIZE, SIZE_TOPIC, PROT_WRITE, MAP_SHARED, fd, 0);
     printf("Hello, you are now inside topic %s \n", topicname);
     i = 0;
     //a questo punto entro nel while per la scrittura nel topic
@@ -144,9 +156,24 @@ int main(int argc, char** argv){
         break;
       }
 
-      //da aggiungere if exit
+      //se leggo exit, esco dal topic
       if (!strcmp(text, "exit\n")){
-        printf("Sto uscendo dal topic %s", topicname);
+        int*num = (int*)malloc(sizeof(int));
+        res = sem_getvalue(counter, num);
+        if(res < 0){
+          printf("Error in getvalue: %d\n", errno);
+          exit(-1);
+        }
+        int z;
+        for(z = 0; z < *num; z++){
+          res = sem_post(sem);
+          if(res < 0){
+            printf("Error in post number: %d\n", z+1);
+            exit(-1);
+          }
+        }
+        int no_use=SharedWrite(text,topic);
+        printf("Sto uscendo dal topic %s\n", topicname);
         break;
       }
       //ho letto il messaggio, lo scrivo nel topic
@@ -185,10 +212,10 @@ int main(int argc, char** argv){
       break;
     }
     //altrimenti posso cambiare topic per cominciare a scrivere in quello
-    free(topicname);
     free(text);
-    topicname = (char*) malloc (sizeof(char)*60);
     text = (char*) malloc (sizeof(char)*60);
+    free(topicname);
+    topicname = (char*) malloc (sizeof(char)*60);
   }
   free(topicname);
 

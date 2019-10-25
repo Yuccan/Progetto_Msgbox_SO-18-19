@@ -1,5 +1,6 @@
 #include "SharedFunctions.h"
-#define SIZE 128
+#define SIZE 1024
+#define SIZE_TOPIC 128
 #define SEM_NAME1 "/semaphore"
 #define SEM_NAME2 "/counter"
 #define CHANNEL "disney"
@@ -42,9 +43,29 @@ int main(int argc, char** argv){
     exit(-1);
   }
   printf("Hi! I am your friendly neighborhood reader, and I will read whatever the write sends me;\n Be careful though: make sure to make me read something before sending the quit message, or I will tell mom!\n");
-
-  char*name= CHANNEL;
-  void* mem= SharedCreate(name,SIZE,1);
+  char* name;
+  void* mem;
+  if (argv[1]){
+    printf("%s",argv[1]);
+    name = argv[1];
+    int fd;
+    fd = shm_open(name, O_RDWR, 0666);
+    if(fd < 0){
+      printf("Cannot create shm, %s\n", strerror(errno));
+      exit(-1);
+    }
+    int res = ftruncate(fd, SIZE_TOPIC);
+    if(res < 0){
+      printf("Cannot truncate shm, %s\n", strerror(errno));
+      exit(-1);
+    }
+    void*topic =SharedCreate(CHANNEL, SIZE,1);
+    mem = mmap(topic+SIZE, SIZE_TOPIC, PROT_READ, MAP_SHARED, fd, 0);
+  }
+  else {
+    name = CHANNEL;
+    mem = SharedCreate(name,SIZE,1);
+  }
   sem_t* sem = sem_open(SEM_NAME1, 0);
   if(sem == SEM_FAILED){
     printf("Error in sem_open: %d\n", errno);
