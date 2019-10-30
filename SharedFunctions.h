@@ -38,4 +38,6 @@ int SharedRead(void* memory); //legge il contenuto della shm AF MG FF
 int topicNum (topicList* topics); //calcola il numero di topics creati
 void listTopic (topicList* topics); //stampa una lista di tutti i topic momentaneamente esistenti in mem
 topic* createTopic (char* name, int size, int flag, void* mem, topicList* topics); //crea un topic contestualmente alla shared memory mem
-void deleteTopic (char* name); //distrugge un topic
+void deleteTopic (topic* topic); //distrugge un topic
+topicList* initTopicList(); //inizializza una topicList vuota
+void destroyTopicList(topicList* list); //distrugge tutti i topic presenti in list, per poi distruggere la lista stessa

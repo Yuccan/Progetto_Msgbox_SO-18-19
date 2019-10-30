@@ -57,6 +57,7 @@ int SharedRead(void* memory){ //legge il contenuto della shm
 int topicNum (topicList* topics){//calcola il numero di topics creati
   int i = 0;
   topicListItem* item = topics->head;
+  if (item==NULL) return 0;
   while(item->next){
     i++;
     item=item->next;
@@ -67,7 +68,8 @@ int topicNum (topicList* topics){//calcola il numero di topics creati
 void listTopic (topicList* topics){ //stampa una lista di tutti i topic momentaneamente esistenti in mem
   topicListItem* item = topics->head;
   topic* currentTopic;
-  printf("----PRINTING TOPICS INFO----");
+  printf("----PRINTING TOPICS INFO----\n");
+  if (item==NULL) printf("No topic currently available\n");
   while(item->next){
     currentTopic = item->item;
     printf("Topic name: %s, Topic size: %n KB, Topic occupied space: %n KB\n",currentTopic->name, &currentTopic->size, &currentTopic->msglength);
@@ -96,10 +98,10 @@ topic* createTopic (char* name, int size, int flag, void* mem, topicList* topics
   }
   void* memory;
   if (flag == 0){
-    memory = mmap(mem+sizeof(topicListItem)*n_topics, size, PROT_WRITE, MAP_SHARED, fd, 0);
+    memory = mmap(mem+size*n_topics, size, PROT_WRITE, MAP_SHARED, fd, 0);
   }
   else{
-    memory = mmap(mem+sizeof(topicListItem)*n_topics, size, PROT_READ, MAP_SHARED, fd, 0);
+    memory = mmap(mem+size*n_topics, size, PROT_READ, MAP_SHARED, fd, 0);
   }
   topic* newtopic = (topic*) malloc (sizeof (topic));
   newtopic->name = name;
@@ -110,11 +112,34 @@ topic* createTopic (char* name, int size, int flag, void* mem, topicList* topics
   newtopicitem->item=newtopic;
   newtopicitem->next=NULL;
   newtopicitem->prec=topics->last;
+  topics->last->next=newtopicitem;
   topics->last=newtopicitem;
   return newtopic;
 }
 
 
-void deleteTopic (char* name){ //distrugge un topic,TODO
+void deleteTopic (topic* topic){ //distugge un topic
+  shm_unlink(topic->memory);
+  return;
+}
+
+topicList* initTopicList(){ //inizializza una topicList vuota
+  topicList* list = (topicList*) malloc(sizeof(topicList));
+  list->head=NULL;
+  list->last=NULL;
+  return list;
+}
+
+void destroyTopicList(topicList* list) { //distrugge tutti i topic presenti in list, per poi distruggere la lista stessa
+  topicListItem* item=list->head;
+  while (item->next){
+      topic* topic =item->item;
+      deleteTopic(topic);
+      free(topic);
+      free(item->prec);
+      item=item->next;
+  }
+  free(item);
+  free(list);
   return;
 }
