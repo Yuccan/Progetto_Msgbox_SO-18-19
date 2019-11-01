@@ -14,7 +14,7 @@
 #include <string.h>
 
 typedef struct topic {
-  char* name;
+  char name[60];
   int size;
   int msglength;
   void* memory;
@@ -31,6 +31,7 @@ typedef struct topicList {
   topicListItem* last;
 }topicList;
 
+//funziona quasi tutto alla perfezione, sistemare la crateTopic per il reader e assicurarsi che la quit chiuda tutto
 
 void* SharedCreate(char* name, int size, int flag); //crea la shm e la mmappa per tutti i processi che ne hanno bisogno, viene chiamata UNA volta AF MG FF
 int SharedWrite(char* text, void* memory); //scrive nella shm il messaggio, restituendo la lunghezza dello stesso, in modo che possa essere aggiunta al puntatore nel processo AF MG FF

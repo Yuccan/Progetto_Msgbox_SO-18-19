@@ -48,7 +48,7 @@ void my_handler(int signum){
 }
 
 int main(int argc, char** argv){
-  printf("Hi, I am the writer! You can communicate with the readers through topics.\nPlease remember that the first input is the name of the topic!\nIf you want to close everything, please use the 'quit' command.\n\n");
+  printf("Hi, I am the writer! You can communicate with the readers through topics.\nPlease remember that the first input is the name of the topic!\nIf you want to close everything, use the 'quit' command.\n\n");
 
   struct sigaction sa;
   sa.sa_handler = my_handler;
@@ -57,10 +57,14 @@ int main(int argc, char** argv){
     exit(-1);
   }
   int res;
-  char*name= CHANNEL;
+  char* name= CHANNEL;
   void* mem= SharedCreate(name,SIZE,0);
   char* topicname= (char*) malloc (sizeof(char)*60);
   char* text= (char*) malloc (sizeof(char)*60);
+  topicList* list= initTopicList();
+  listTopic(list);
+  topic* newtopic;
+  void* topic;
   sem_t* sem = sem_open(SEM_NAME1, O_CREAT, 0666, 0);
   if(sem == SEM_FAILED){
     printf("Error in sem_open: %d\n", errno);
@@ -75,6 +79,7 @@ int main(int argc, char** argv){
 
   while(1){
     //lettura messaggio
+    printf("\n-------------------\n---Outside topic---\n-------------------\n");
     printf("Please write the name of the topic you want to create (enter 'quit' to close):\n");
     while(i< 60){
       res = read(0, topicname + i, 1);
@@ -106,20 +111,13 @@ int main(int argc, char** argv){
       int no_use=SharedWrite(topicname,mem);
       break;
     }
-    strcpy(topicname,strtok(topicname,"\n"));
+    char strippedtopicname[60];
+    strcpy(strippedtopicname,strtok(topicname,"\n"));
     //se sono qui la stringa non è quit, quindi creo il topic
-    int fd;
-    fd = shm_open(topicname, O_CREAT|O_RDWR, 0666);
-    if(fd < 0){
-      printf("Cannot create shm, %s\n", strerror(errno));
-      exit(-1);
-    }
-    int res = ftruncate(fd, SIZE_TOPIC);
-    if(res < 0){
-      printf("Cannot truncate shm, %s\n", strerror(errno));
-      exit(-1);
-    }
-    void* topic = mmap(mem+SIZE, SIZE_TOPIC, PROT_WRITE, MAP_SHARED, fd, 0);
+    newtopic = createTopic(strippedtopicname, SIZE_TOPIC, 0, mem, list);
+    topic = newtopic->memory;
+    listTopic(list);
+    printf("\n------------------\n---Inside topic---\n------------------\n");
     printf("\nHello, you are now inside topic %s. If you want to change topic, please use the command 'exit'. And remember the 'quit' command is always available!\n\n", topicname);
     i = 0;
     //a questo punto entro nel while per la scrittura nel topic
@@ -154,6 +152,7 @@ int main(int argc, char** argv){
         }
 
         int no_use=SharedWrite(text,topic);
+        newtopic->msglength+=no_use;
         break;
       }
 
@@ -174,12 +173,13 @@ int main(int argc, char** argv){
           }
         }
         int no_use=SharedWrite(text,topic);
+        newtopic->msglength+=no_use;
         printf("You are now outside of topic %s\n\n", topicname);
         break;
       }
       //ho letto il messaggio, lo scrivo nel topic
-      int*number = (int*)malloc(sizeof(int));
 
+      int*number = (int*)malloc(sizeof(int));
       res = sem_getvalue(counter, number);
 
       if(res < 0){
@@ -187,7 +187,7 @@ int main(int argc, char** argv){
         exit(-1);
       }
       int z;
-      printf("Reader number:%d\n", *number);
+      printf("\nReader number:%d\n", *number);
 
       for(z = 0; z < *number; z++){
         res = sem_post(sem);
@@ -198,15 +198,13 @@ int main(int argc, char** argv){
       }
 
       int offset=SharedWrite(text,topic);
-
+      newtopic->msglength+=offset;
       topic+=offset;
       i=0;
       z=0;
       free(text);
       text= (char*) malloc (sizeof(char)*60);
     }
-
-    shm_unlink(topicname);
     //se il testo ricevuto era quit
     if (!strcmp(text, "quit\n")){
       free(text);
@@ -220,7 +218,7 @@ int main(int argc, char** argv){
     topicname = (char*) malloc (sizeof(char)*60);
   }
   free(topicname);
-  printf("Bye bye, call me again if you need me!\n");
+  destroyTopicList(list);
   while(1){
     int*value = (int*)malloc(sizeof(int));
     res = sem_getvalue(counter, value);
@@ -252,5 +250,6 @@ int main(int argc, char** argv){
     exit(-1);
   }
   shm_unlink(name);
+  printf("Bye bye, call me again if you need me!\n");
   return 0;
 }

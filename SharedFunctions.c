@@ -56,9 +56,10 @@ int SharedRead(void* memory){ //legge il contenuto della shm
 }
 
 int topicNum (topicList* topics){//calcola il numero di topics creati
-  int i = 0;
+  int i = 1;
   topicListItem* item = topics->head;
   if (item==NULL) return 0;
+  if (item->item==NULL) return 0;
   while(item->next){
     i++;
     item=item->next;
@@ -69,17 +70,24 @@ int topicNum (topicList* topics){//calcola il numero di topics creati
 void listTopic (topicList* topics){ //stampa una lista di tutti i topic momentaneamente esistenti in mem
   topicListItem* item = topics->head;
   topic* currentTopic;
-  printf("----PRINTING TOPICS INFO----\n");
-  if (item==NULL) printf("No topic currently available\n");
-  while(item->next){
-    currentTopic = item->item;
-    printf("Topic name: %s, Topic size: %n KB, Topic occupied space: %n KB\n",currentTopic->name, &currentTopic->size, &currentTopic->msglength);
-    item=item->next;
+  printf("\n----PRINTING TOPICS INFO----\n");
+  int n_topics= topicNum(topics);
+  printf("Number of existing topics: %d\n", n_topics);
+  if (n_topics==0) {
+    printf("No topic currently available\n\n");
+    return;
   }
+  currentTopic =item->item;
+  while(item->next){
+    printf("Topic name: %s, Topic size: %d KB, Topic occupied space: %d KB\n",currentTopic->name, currentTopic->size, currentTopic->msglength);
+    item=item->next;
+    currentTopic=item->item;
+  }
+  printf("Topic name: %s, Topic size: %d KB, Topic occupied space: %d KB\n\n",currentTopic->name, currentTopic->size, currentTopic->msglength);
   return;
 }
 
-topic* createTopic (char* name, int size, int flag, void* mem, topicList* topics){ //crea un topic contestualmente alla shared memory preallocata
+topic* createTopic (char name[60], int size, int flag, void* mem, topicList* topics){ //crea un topic contestualmente alla shared memory preallocata
   int n_topics=topicNum(topics);
   int fd;
   if (flag == 0){
@@ -99,28 +107,36 @@ topic* createTopic (char* name, int size, int flag, void* mem, topicList* topics
   }
   void* memory;
   if (flag == 0){
-    memory = mmap(mem+size*n_topics, size, PROT_WRITE, MAP_SHARED, fd, 0);
+    memory = mmap(mem+1024*n_topics, size, PROT_WRITE, MAP_SHARED, fd, 0);
+    topic* newtopic = (topic*) malloc (sizeof (topic));
+    strcpy(newtopic->name, name);
+    newtopic->size = size;
+    newtopic->msglength = 0;
+    newtopic->memory = memory;
+    topicListItem* newtopicitem=(topicListItem*) malloc(sizeof(topicListItem));
+    newtopicitem->item=newtopic;
+    newtopicitem->next=NULL;
+    if(topics->head==NULL){
+      newtopicitem->prec=NULL;
+      topics->head=newtopicitem;
+    }
+    else{
+      newtopicitem->prec=topics->last;
+      topics->last->next=newtopicitem;
+    }
+    topics->last=newtopicitem;
+    printf("\nThe topic %s has been created succesfully!\n", name);
   }
   else{
-    memory = mmap(mem+size*n_topics, size, PROT_READ, MAP_SHARED, fd, 0);
+    memory = mmap(mem+1024*n_topics, size, PROT_READ, MAP_SHARED, fd, 0);
   }
-  topic* newtopic = (topic*) malloc (sizeof (topic));
-  newtopic->name = name;
-  newtopic->size = size;
-  newtopic->msglength = 0;
-  newtopic->memory = memory;
-  topicListItem* newtopicitem;
-  newtopicitem->item=newtopic;
-  newtopicitem->next=NULL;
-  newtopicitem->prec=topics->last;
-  topics->last->next=newtopicitem;
-  topics->last=newtopicitem;
   return newtopic;
 }
 
 
 void deleteTopic (topic* topic){ //distugge un topic
   shm_unlink(topic->memory);
+  free(topic);
   return;
 }
 
@@ -133,14 +149,27 @@ topicList* initTopicList(){ //inizializza una topicList vuota
 
 void destroyTopicList(topicList* list) { //distrugge tutti i topic presenti in list, per poi distruggere la lista stessa
   topicListItem* item=list->head;
+  if (item==NULL){
+    free(list);
+    printf("Topic list destroyed\n");
+    return;
+  }
+  else if (item!=NULL && item->next==NULL){
+    deleteTopic(item->item);
+    free(item);
+    free(list);
+    printf("Topic list destroyed\n");
+    return;
+  }
   while (item->next){
       topic* topic =item->item;
       deleteTopic(topic);
-      free(topic);
-      free(item->prec);
       item=item->next;
+      free(item->prec);
   }
+  deleteTopic(item->item);
   free(item);
   free(list);
+  printf("Topic list destroyed\n");
   return;
 }
