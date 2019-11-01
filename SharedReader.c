@@ -21,15 +21,15 @@ void my_handler(int signum){
     sem_wait(counter);
     res = sem_close(counter);
     if (res < 0){
-      printf("Error in sem_close on counter\n" );
+      printf("Error in sem_close on counter\n");
       exit(-1);
     }
     res = sem_close(sem);
     if (res < 0){
-      printf("Error in sem_close on sem\n" );
+      printf("Error in sem_close on sem\n");
       exit(-1);
     }
-    printf("everything was killed\n");
+    printf("Everything was killed\n");
     exit(-1);
   }
 
@@ -42,11 +42,10 @@ int main(int argc, char** argv){
     perror("sigaction");
     exit(-1);
   }
-  printf("Hi! I am your friendly neighborhood reader, and I will read whatever the write sends me;\n Be careful though: make sure to make me read something before sending the quit message, or I will tell mom!\n");
+  printf("Hi! I am a reader, and I will read whatever the writer sends me.\nBe careful though: make sure to make me read something before sending the quit message!\n\n");
   char* name;
   void* mem;
   if (argv[1]){
-    printf("%s",argv[1]);
     name = argv[1];
     int fd;
     fd = shm_open(name, O_RDWR, 0666);
@@ -63,9 +62,10 @@ int main(int argc, char** argv){
     mem = mmap(topic+SIZE, SIZE_TOPIC, PROT_READ, MAP_SHARED, fd, 0);
   }
   else {
-    name = CHANNEL;
-    mem = SharedCreate(name,SIZE,1);
+    printf("You must input the name of the topic you want to connect to!\n");
+    exit(-1);
   }
+  printf("You are connected to topic %s\n",name);
   sem_t* sem = sem_open(SEM_NAME1, 0);
   if(sem == SEM_FAILED){
     printf("Error in sem_open: %d\n", errno);
@@ -79,7 +79,7 @@ int main(int argc, char** argv){
   int res = sem_post(counter);
 
   if(res < 0){
-    printf("Error in sem_post on counter");
+    printf("Error in sem_post on counter\n");
     exit(-1);
   }
   while(1){
@@ -87,28 +87,27 @@ int main(int argc, char** argv){
     res = sem_wait(sem);
 
     if(res < 0){
-      printf("Error in sem_wait on sem");
+      printf("Error in sem_wait on sem\n");
       exit(-1);
     }
     int offset=SharedRead(mem);
-    printf ("ho letto\n");
     if(offset==-1) break;
     mem+=offset;
     sleep(1);
   }
   res = sem_wait(counter);
   if(res < 0){
-    printf("Error in sem_wait on counter");
+    printf("Error in sem_wait on counter\n");
     exit(-1);
   }
   res = sem_close(counter);
   if (res < 0){
-    printf("Error in sem_close on counter\n" );
+    printf("Error in sem_close on counter\n");
     exit(-1);
   }
   res = sem_close(sem);
   if (res < 0){
-    printf("Error in sem_close on sem\n" );
+    printf("Error in sem_close on sem\n");
     exit(-1);
   }
 

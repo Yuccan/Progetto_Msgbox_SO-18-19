@@ -11,49 +11,49 @@ void my_handler(int signum){
   if(signum == SIGINT){
     sem_t* sem = sem_open(SEM_NAME1, 0);
     if(sem == SEM_FAILED){
-      printf("Error in sem_open: %d\n", errno);
+      printf("Error in sem_open: %s\n", strerror(errno));
       exit(-1);
     }
     sem_t* counter = sem_open(SEM_NAME2, 0);
     if(sem == SEM_FAILED){
-      printf("Error in sem_open: %d\n", errno);
+      printf("Error in sem_open: %s\n", strerror(errno));
       exit(-1);
     }
 
     res = sem_close(counter);
     if (res < 0){
-      printf("Error sem_close on counter\n" );
+      printf("Error sem_close on counter\n");
       exit(-1);
     }
     res = sem_unlink(SEM_NAME2);
     if (res < 0){
-      printf("Error sem_unlink on counter\n" );
+      printf("Error sem_unlink on counter\n");
       exit(-1);
     }
     res = sem_close(sem);
     if (res < 0){
-      printf("Error in sem_close on sem\n" );
+      printf("Error in sem_close on sem\n");
       exit(-1);
     }
     res = sem_unlink(SEM_NAME1);
     if (res < 0){
-      printf("Error sem_unlink on sem\n" );
+      printf("Error sem_unlink on sem\n");
       exit(-1);
     }
     shm_unlink(CHANNEL);
-    printf("Ho ucciso tutto\n");
+    printf("Everything was killed\n");
     exit(-1);
   }
 
 }
 
 int main(int argc, char** argv){
-  printf("Hi! I am the Evil Writer!\n Those silly readers will make sure to read whatever I tell them, even closing when I say quit! MWAHAH, SO EVIL!\n");
+  printf("Hi, I am the writer! You can communicate with the readers through topics.\nPlease remember that the first input is the name of the topic!\nIf you want to close everything, please use the 'quit' command.\n\n");
 
   struct sigaction sa;
   sa.sa_handler = my_handler;
   if(sigaction(SIGINT, &sa, NULL)<0){
-    perror("sigaction");
+    perror("sigaction\n");
     exit(-1);
   }
   int res;
@@ -75,6 +75,7 @@ int main(int argc, char** argv){
 
   while(1){
     //lettura messaggio
+    printf("Please write the name of the topic you want to create (enter 'quit' to close):\n");
     while(i< 60){
       res = read(0, topicname + i, 1);
       if(res == 1){
@@ -105,7 +106,6 @@ int main(int argc, char** argv){
       int no_use=SharedWrite(topicname,mem);
       break;
     }
-
     strcpy(topicname,strtok(topicname,"\n"));
     //se sono qui la stringa non è quit, quindi creo il topic
     int fd;
@@ -120,10 +120,11 @@ int main(int argc, char** argv){
       exit(-1);
     }
     void* topic = mmap(mem+SIZE, SIZE_TOPIC, PROT_WRITE, MAP_SHARED, fd, 0);
-    printf("Hello, you are now inside topic %s \n", topicname);
+    printf("\nHello, you are now inside topic %s. If you want to change topic, please use the command 'exit'. And remember the 'quit' command is always available!\n\n", topicname);
     i = 0;
     //a questo punto entro nel while per la scrittura nel topic
     while(1){
+      printf("Please write the message you want to send (enter 'quit' to close, 'exit' to change topic):\n");
       //leggo il messaggio
       while(i< 60){
         res = read(0, text + i, 1);
@@ -173,7 +174,7 @@ int main(int argc, char** argv){
           }
         }
         int no_use=SharedWrite(text,topic);
-        printf("Sto uscendo dal topic %s\n", topicname);
+        printf("You are now outside of topic %s\n\n", topicname);
         break;
       }
       //ho letto il messaggio, lo scrivo nel topic
@@ -186,7 +187,7 @@ int main(int argc, char** argv){
         exit(-1);
       }
       int z;
-      printf("reader number:%d\n", *number);
+      printf("Reader number:%d\n", *number);
 
       for(z = 0; z < *number; z++){
         res = sem_post(sem);
@@ -212,18 +213,19 @@ int main(int argc, char** argv){
       break;
     }
     //altrimenti posso cambiare topic per cominciare a scrivere in quello
+    i=0;
     free(text);
     text = (char*) malloc (sizeof(char)*60);
     free(topicname);
     topicname = (char*) malloc (sizeof(char)*60);
   }
   free(topicname);
-
+  printf("Bye bye, call me again if you need me!\n");
   while(1){
     int*value = (int*)malloc(sizeof(int));
     res = sem_getvalue(counter, value);
     if(res < 0){
-      printf("Error in getvalue: %d\n", errno);
+      printf("Error in getvalue: %s\n", strerror(errno));
       exit(-1);
     }
     if(*value == 0) break;
@@ -231,22 +233,22 @@ int main(int argc, char** argv){
   }
   res = sem_close(counter);
   if (res < 0){
-    printf("Error sem_close on counter\n" );
+    printf("Error sem_close on counter\n");
     exit(-1);
   }
   res = sem_unlink(SEM_NAME2);
   if (res < 0){
-    printf("Error sem_unlink on counter\n" );
+    printf("Error sem_unlink on counter\n");
     exit(-1);
   }
   res = sem_close(sem);
   if (res < 0){
-    printf("Error in sem_close on sem\n" );
+    printf("Error in sem_close on sem\n");
     exit(-1);
   }
   res = sem_unlink(SEM_NAME1);
   if (res < 0){
-    printf("Error sem_unlink on sem\n" );
+    printf("Error sem_unlink on sem\n");
     exit(-1);
   }
   shm_unlink(name);

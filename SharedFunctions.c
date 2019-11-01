@@ -29,10 +29,11 @@ void* SharedCreate(char* name, int size, int flag){ //crea la shm e la mmappa pe
 }
 
 int SharedWrite(char* text, void* memory){ //scrive nella shm il messaggio, restituendo la lunghezza dello stesso, in modo che possa essere aggiunta al puntatore nel processo
-  printf("%d\n",(int)strlen(text));
+  printf("Length of the message: %d\n",(int)strlen(text));
   char* buffer= (char*) memory;
-  sprintf(buffer, "%s\n",text);
   printf("Sending the message...\n");
+  sprintf(buffer, "%s\n",text);
+  printf("Done!\n\n");
   int len= strlen(text)+1;
   return len;
 }
