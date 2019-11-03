@@ -68,6 +68,20 @@ int topicNum (topicList* topics){//calcola il numero di topics creati
   return i;
 }
 
+topic* findTopic(char* name, topicList* list){
+  topicListItem* item = list->head;
+  char* topicname;
+  if (item==NULL) return NULL;
+  while(item->next){
+    topicname=item->item->name;
+    if(!strcmp(topicname,name)) return item->item;
+    item=item->next;
+  }
+  topicname=item->item->name;
+  if(!strcmp(topicname,name)) return item->item;
+  return NULL;
+}
+
 void listTopic (topicList* topics){ //stampa una lista di tutti i topic momentaneamente esistenti in mem
   topicListItem* item = topics->head;
   topic* currentTopic;
@@ -80,7 +94,7 @@ void listTopic (topicList* topics){ //stampa una lista di tutti i topic momentan
   }
   currentTopic =item->item;
   while(item->next){
-    printf("Topic name: %s, Topic size: %d KB, Topic occupied space: %d KBn",currentTopic->name, currentTopic->size, currentTopic->msglength);
+    printf("Topic name: %s, Topic size: %d KB, Topic occupied space: %d KB\n",currentTopic->name, currentTopic->size, currentTopic->msglength);
     item=item->next;
     currentTopic=item->item;
   }
@@ -89,7 +103,13 @@ void listTopic (topicList* topics){ //stampa una lista di tutti i topic momentan
 }
 
 topic* createTopic (char name[60], int size, void* mem, topicList* topics){ //crea un topic contestualmente alla shared memory preallocata
-  int n_topics=topicNum(topics);
+  topic* foundTopic = findTopic(name,topics);
+  if(foundTopic!=NULL) {
+    printf("The topic %s already exists, connecting to it...\n", name);
+    //foundTopic->memory+=foundTopic->msglength;
+    printf("Done!\n");
+    return foundTopic;
+  }
   int fd;
   fd = shm_open(name, O_RDWR|O_CREAT, 0666);
   if(fd < 0){
@@ -178,10 +198,6 @@ void destroyTopicList(topicList* list) { //distrugge tutti i topic presenti in l
   free(item);
   free(list);
   printf("Topic list destroyed\n");
-  return;
-}
-
-void findTopic(char* name, topicList* list){
   return;
 }
 

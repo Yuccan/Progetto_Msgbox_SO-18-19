@@ -109,6 +109,7 @@ int main(int argc, char** argv){
         }
       }
       sendQuit(list,topicname);
+      free(num);
       break;
     }
     char strippedtopicname[60];
@@ -116,6 +117,7 @@ int main(int argc, char** argv){
     //se sono qui la stringa non è quit, quindi creo il topic
     newtopic = createTopic(strippedtopicname, SIZE_TOPIC, mem, list);
     topic = newtopic->memory;
+    topic += newtopic->msglength;
     listTopic(list);
     printf("\n------------------\n---Inside topic---\n------------------\n");
     printf("\nHello, you are now inside topic %s. If you want to change topic, please use the command 'exit'. And remember the 'quit' command is always available!\n\n", topicname);
@@ -151,6 +153,7 @@ int main(int argc, char** argv){
           }
         }
         sendQuit(list, text);
+        free(num);
         break;
       }
 
@@ -173,6 +176,7 @@ int main(int argc, char** argv){
         int no_use=SharedWrite(text,topic);
         newtopic->msglength+=no_use;
         printf("You are now outside of topic %s\n\n", topicname);
+        free(num);
         break;
       }
       //ho letto il messaggio, lo scrivo nel topic
@@ -194,7 +198,7 @@ int main(int argc, char** argv){
           exit(-1);
         }
       }
-
+      free(number);
       int offset=SharedWrite(text,topic);
       newtopic->msglength+=offset;
       topic+=offset;
@@ -224,7 +228,11 @@ int main(int argc, char** argv){
       printf("Error in getvalue: %s\n", strerror(errno));
       exit(-1);
     }
-    if(*value == 0) break;
+    if(*value == 0) {
+      free(value);
+      break;
+    }
+    free(value);
     sleep(1);
   }
   res = sem_close(counter);

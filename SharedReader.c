@@ -50,7 +50,7 @@ int main(int argc, char** argv){
     mem = attachToTopic(name, SIZE_TOPIC, CHANNEL, SIZE);
   }
   else {
-    printf("You must input the name of the topic you want to connect to!\n");
+    printf("You must input in the command line the name of the topic you want to connect to!\n");
     exit(-1);
   }
   printf("You are connected to topic %s\n\n",name);
