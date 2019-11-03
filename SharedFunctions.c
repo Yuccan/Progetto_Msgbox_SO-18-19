@@ -42,6 +42,7 @@ int SharedRead(void* memory){ //legge il contenuto della shm
   char* buffer = (char*) memory;
   int i = 0;
   char* check = (char*) malloc (sizeof(char) * 60);
+  if(buffer[0]!= '\0') printf("New message received: ");
   while(buffer[i] != '\0'){
     printf("%c", buffer[i]);
     check[i] = buffer[i];
@@ -79,7 +80,7 @@ void listTopic (topicList* topics){ //stampa una lista di tutti i topic momentan
   }
   currentTopic =item->item;
   while(item->next){
-    printf("Topic name: %s, Topic size: %d KB, Topic occupied space: %d KB\n",currentTopic->name, currentTopic->size, currentTopic->msglength);
+    printf("Topic name: %s, Topic size: %d KB, Topic occupied space: %d KBn",currentTopic->name, currentTopic->size, currentTopic->msglength);
     item=item->next;
     currentTopic=item->item;
   }
@@ -87,15 +88,10 @@ void listTopic (topicList* topics){ //stampa una lista di tutti i topic momentan
   return;
 }
 
-topic* createTopic (char name[60], int size, int flag, void* mem, topicList* topics){ //crea un topic contestualmente alla shared memory preallocata
+topic* createTopic (char name[60], int size, void* mem, topicList* topics){ //crea un topic contestualmente alla shared memory preallocata
   int n_topics=topicNum(topics);
   int fd;
-  if (flag == 0){
-    fd = shm_open(name, O_RDWR|O_CREAT, 0666);
-  }
-  else{
-    fd = shm_open(name, O_RDWR, 0666);
-  }
+  fd = shm_open(name, O_RDWR|O_CREAT, 0666);
   if(fd < 0){
     printf("Cannot create shm, %s\n", strerror(errno));
     exit(-1);
@@ -106,33 +102,44 @@ topic* createTopic (char name[60], int size, int flag, void* mem, topicList* top
     exit(-1);
   }
   void* memory;
-  if (flag == 0){
-    memory = mmap(mem+1024*n_topics, size, PROT_WRITE, MAP_SHARED, fd, 0);
-    topic* newtopic = (topic*) malloc (sizeof (topic));
-    strcpy(newtopic->name, name);
-    newtopic->size = size;
-    newtopic->msglength = 0;
-    newtopic->memory = memory;
-    topicListItem* newtopicitem=(topicListItem*) malloc(sizeof(topicListItem));
-    newtopicitem->item=newtopic;
-    newtopicitem->next=NULL;
-    if(topics->head==NULL){
-      newtopicitem->prec=NULL;
-      topics->head=newtopicitem;
-    }
-    else{
-      newtopicitem->prec=topics->last;
-      topics->last->next=newtopicitem;
-    }
-    topics->last=newtopicitem;
-    printf("\nThe topic %s has been created succesfully!\n", name);
+  topic* newtopic = (topic*) malloc (sizeof (topic));
+  memory = mmap(mem, size, PROT_WRITE, MAP_SHARED, fd, 0);
+  strcpy(newtopic->name, name);
+  newtopic->size = size;
+  newtopic->msglength = 0;
+  newtopic->memory = memory;
+  topicListItem* newtopicitem=(topicListItem*) malloc(sizeof(topicListItem));
+  newtopicitem->item=newtopic;
+  newtopicitem->next=NULL;
+  if(topics->head==NULL){
+    newtopicitem->prec=NULL;
+    topics->head=newtopicitem;
   }
   else{
-    memory = mmap(mem+1024*n_topics, size, PROT_READ, MAP_SHARED, fd, 0);
+    newtopicitem->prec=topics->last;
+    topics->last->next=newtopicitem;
   }
+  topics->last=newtopicitem;
+  printf("\nThe topic %s has been created succesfully!\n", name);
   return newtopic;
 }
 
+void* attachToTopic (char* name, int size, char* memName, int memSize){
+  int fd;
+  fd = shm_open(name, O_RDWR, 0666);
+  if(fd < 0){
+    printf("Cannot create shm, %s\n", strerror(errno));
+    exit(-1);
+  }
+  int res = ftruncate(fd, size);
+  if(res < 0){
+    printf("Cannot truncate shm, %s\n", strerror(errno));
+    exit(-1);
+  }
+  void* topic = SharedCreate(memName, memSize, 1);
+  void* mem = mmap(topic, size, PROT_READ, MAP_SHARED, fd, 0);
+  return mem;
+}
 
 void deleteTopic (topic* topic){ //distugge un topic
   shm_unlink(topic->memory);
@@ -171,5 +178,28 @@ void destroyTopicList(topicList* list) { //distrugge tutti i topic presenti in l
   free(item);
   free(list);
   printf("Topic list destroyed\n");
+  return;
+}
+
+void findTopic(char* name, topicList* list){
+  return;
+}
+
+void sendQuit(topicList* list, char* string){
+  topicListItem* item= list->head;
+  void* memory;
+  if(item==NULL) {
+    printf("No topics to destroy\n");
+    return;
+  }
+  while (item->next){
+    printf("\nTopic %s, sending quit message\n", item->item->name);
+    memory=item->item->memory;
+    int no_use = SharedWrite(string, memory+item->item->msglength);
+    item=item->next;
+  }
+  printf("\nTopic %s, sending quit message\n", item->item->name);
+  memory=item->item->memory;
+  int no_use = SharedWrite(string, memory+item->item->msglength);
   return;
 }

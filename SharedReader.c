@@ -47,25 +47,13 @@ int main(int argc, char** argv){
   void* mem;
   if (argv[1]){
     name = argv[1];
-    int fd;
-    fd = shm_open(name, O_RDWR, 0666);
-    if(fd < 0){
-      printf("Cannot create shm, %s\n", strerror(errno));
-      exit(-1);
-    }
-    int res = ftruncate(fd, SIZE_TOPIC);
-    if(res < 0){
-      printf("Cannot truncate shm, %s\n", strerror(errno));
-      exit(-1);
-    }
-    void*topic =SharedCreate(CHANNEL, SIZE,1);
-    mem = mmap(topic+SIZE, SIZE_TOPIC, PROT_READ, MAP_SHARED, fd, 0);
+    mem = attachToTopic(name, SIZE_TOPIC, CHANNEL, SIZE);
   }
   else {
     printf("You must input the name of the topic you want to connect to!\n");
     exit(-1);
   }
-  printf("You are connected to topic %s\n",name);
+  printf("You are connected to topic %s\n\n",name);
   sem_t* sem = sem_open(SEM_NAME1, 0);
   if(sem == SEM_FAILED){
     printf("Error in sem_open: %d\n", errno);

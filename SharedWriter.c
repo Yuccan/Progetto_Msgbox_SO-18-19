@@ -108,13 +108,13 @@ int main(int argc, char** argv){
           exit(-1);
         }
       }
-      int no_use=SharedWrite(topicname,mem);
+      sendQuit(list,topicname);
       break;
     }
     char strippedtopicname[60];
     strcpy(strippedtopicname,strtok(topicname,"\n"));
     //se sono qui la stringa non è quit, quindi creo il topic
-    newtopic = createTopic(strippedtopicname, SIZE_TOPIC, 0, mem, list);
+    newtopic = createTopic(strippedtopicname, SIZE_TOPIC, mem, list);
     topic = newtopic->memory;
     listTopic(list);
     printf("\n------------------\n---Inside topic---\n------------------\n");
@@ -150,9 +150,7 @@ int main(int argc, char** argv){
             exit(-1);
           }
         }
-
-        int no_use=SharedWrite(text,topic);
-        newtopic->msglength+=no_use;
+        sendQuit(list, text);
         break;
       }
 
