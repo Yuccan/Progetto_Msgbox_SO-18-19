@@ -58,11 +58,11 @@ int main(int argc, char** argv){
   }
   int res;
   char* name= CHANNEL;
-  void* mem= SharedCreate(name,SIZE,0);
+  void* mem= shared_create(name,SIZE,0);
   char* topicname= (char*) malloc (sizeof(char)*60);
   char* text= (char*) malloc (sizeof(char)*60);
-  topicList* list= initTopicList();
-  listTopic(list);
+  topicList* list= init_topic_list();
+  list_topic(list);
   topic* newtopic;
   void* topic;
   sem_t* sem = sem_open(SEM_NAME1, O_CREAT, 0666, 0);
@@ -91,10 +91,11 @@ int main(int argc, char** argv){
         exit(-1);
       }
     }
-    //se la stringa è quit, faccio una sharedWrite a vuoto ed esco dal while(1)
+    //se la stringa è quit, faccio una shared_write a vuoto ed esco dal while(1)
     if(!strcmp(topicname,"quit\n")){
       int*num = (int*)malloc(sizeof(int));
       res = sem_getvalue(counter, num);
+      printf("\nReader number:%d\n", *num);
       if(res < 0){
         printf("Error in getvalue: %d\n", errno);
         exit(-1);
@@ -108,17 +109,17 @@ int main(int argc, char** argv){
           exit(-1);
         }
       }
-      sendQuit(list,topicname);
+      send_quit(list,topicname);
       free(num);
       break;
     }
     char strippedtopicname[60];
     strcpy(strippedtopicname,strtok(topicname,"\n"));
     //se sono qui la stringa non è quit, quindi creo il topic
-    newtopic = createTopic(strippedtopicname, SIZE_TOPIC, mem, list);
+    newtopic = create_topic(strippedtopicname, SIZE_TOPIC, mem, list);
     topic = newtopic->memory;
     topic += newtopic->msglength;
-    listTopic(list);
+    list_topic(list);
     printf("\n------------------\n---Inside topic---\n------------------\n");
     printf("\nHello, you are now inside topic %s. If you want to change topic, please use the command 'exit'. And remember the 'quit' command is always available!\n\n", topicname);
     i = 0;
@@ -140,6 +141,7 @@ int main(int argc, char** argv){
       if(!strcmp(text,"quit\n")){
         int*num = (int*)malloc(sizeof(int));
         res = sem_getvalue(counter, num);
+        printf("\nReader number:%d\n", *num);
         if(res < 0){
           printf("Error in getvalue: %d\n", errno);
           exit(-1);
@@ -152,7 +154,7 @@ int main(int argc, char** argv){
             exit(-1);
           }
         }
-        sendQuit(list, text);
+        send_quit(list, text);
         free(num);
         break;
       }
@@ -161,6 +163,7 @@ int main(int argc, char** argv){
       if (!strcmp(text, "exit\n")){
         int*num = (int*)malloc(sizeof(int));
         res = sem_getvalue(counter, num);
+        printf("\nReader number:%d\n", *num);
         if(res < 0){
           printf("Error in getvalue: %d\n", errno);
           exit(-1);
@@ -173,7 +176,7 @@ int main(int argc, char** argv){
             exit(-1);
           }
         }
-        int no_use=SharedWrite(text,topic);
+        int no_use=shared_write(text,topic);
         newtopic->msglength+=no_use;
         printf("You are now outside of topic %s\n\n", topicname);
         free(num);
@@ -199,7 +202,7 @@ int main(int argc, char** argv){
         }
       }
       free(number);
-      int offset=SharedWrite(text,topic);
+      int offset=shared_write(text,topic);
       newtopic->msglength+=offset;
       topic+=offset;
       i=0;
@@ -220,7 +223,7 @@ int main(int argc, char** argv){
     topicname = (char*) malloc (sizeof(char)*60);
   }
   free(topicname);
-  destroyTopicList(list);
+  destroy_topic_list(list);
   while(1){
     int*value = (int*)malloc(sizeof(int));
     res = sem_getvalue(counter, value);

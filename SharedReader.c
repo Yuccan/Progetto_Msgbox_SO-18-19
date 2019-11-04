@@ -47,7 +47,7 @@ int main(int argc, char** argv){
   void* mem;
   if (argv[1]){
     name = argv[1];
-    mem = attachToTopic(name, SIZE_TOPIC, CHANNEL, SIZE);
+    mem = attach_to_topic(name, SIZE_TOPIC, CHANNEL, SIZE);
   }
   else {
     printf("You must input in the command line the name of the topic you want to connect to!\n");
@@ -70,6 +70,7 @@ int main(int argc, char** argv){
     printf("Error in sem_post on counter\n");
     exit(-1);
   }
+
   while(1){
 
     res = sem_wait(sem);
@@ -78,7 +79,7 @@ int main(int argc, char** argv){
       printf("Error in sem_wait on sem\n");
       exit(-1);
     }
-    int offset=SharedRead(mem);
+    int offset=shared_read(mem);
     if(offset==-1) break;
     mem+=offset;
     sleep(1);
